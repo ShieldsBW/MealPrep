@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import RecipeCard from '../components/Recipe/RecipeCard'
 import RecipeDetail from '../components/Recipe/RecipeDetail'
@@ -7,13 +7,35 @@ import RecipeFilters from '../components/Recipe/RecipeFilters'
 import ApiCreditsDisplay from '../components/Common/ApiCreditsDisplay'
 import { searchRecipes, MOCK_RECIPES, clearSearchCache } from '../services/api'
 
-// Track if we've done initial load across component mounts
-let hasLoadedInitially = false
-let cachedRecipes = []
+// Load cached recipes from sessionStorage (survives page refresh)
+function loadCachedRecipes() {
+  try {
+    const cached = sessionStorage.getItem('cached_recipes')
+    return cached ? JSON.parse(cached) : []
+  } catch {
+    return []
+  }
+}
+
+function saveCachedRecipes(recipes) {
+  try {
+    sessionStorage.setItem('cached_recipes', JSON.stringify(recipes))
+  } catch (e) {
+    console.error('Error caching recipes:', e)
+  }
+}
+
+function hasLoadedRecipes() {
+  return sessionStorage.getItem('recipes_loaded') === 'true'
+}
+
+function setRecipesLoaded() {
+  sessionStorage.setItem('recipes_loaded', 'true')
+}
 
 function Recipes() {
   const { favorites, customRecipes } = useApp()
-  const [recipes, setRecipes] = useState(cachedRecipes)
+  const [recipes, setRecipes] = useState(loadCachedRecipes)
   const [selectedRecipe, setSelectedRecipe] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -27,9 +49,9 @@ function Recipes() {
   })
 
   useEffect(() => {
-    // Only fetch on first ever load, not on page revisits
-    if (!hasLoadedInitially) {
-      hasLoadedInitially = true
+    // Only fetch if we haven't loaded recipes this session
+    if (!hasLoadedRecipes()) {
+      setRecipesLoaded()
       loadRecipes()
     }
   }, [])
@@ -53,12 +75,12 @@ function Recipes() {
       })
       const newRecipes = result.results || MOCK_RECIPES
       setRecipes(newRecipes)
-      cachedRecipes = newRecipes // Cache at module level for page revisits
+      saveCachedRecipes(newRecipes) // Cache to sessionStorage for page refreshes
     } catch (err) {
       setError(err.message)
       if (recipes.length === 0) {
         setRecipes(MOCK_RECIPES)
-        cachedRecipes = MOCK_RECIPES
+        saveCachedRecipes(MOCK_RECIPES)
       }
     } finally {
       setIsLoading(false)
