@@ -34,6 +34,8 @@ jobs:
         run: npm run build
         env:
           VITE_SPOONACULAR_API_KEY: ${{ secrets.VITE_SPOONACULAR_API_KEY }}
+          VITE_KROGER_CLIENT_ID: ${{ secrets.VITE_KROGER_CLIENT_ID }}
+          VITE_KROGER_CLIENT_SECRET: ${{ secrets.VITE_KROGER_CLIENT_SECRET }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
