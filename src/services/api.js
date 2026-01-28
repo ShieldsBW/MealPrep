@@ -1,6 +1,44 @@
 const API_BASE_URL = 'https://api.spoonacular.com'
 const API_KEY = import.meta.env.VITE_SPOONACULAR_API_KEY
 
+// Cache configuration
+const CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutes
+const apiCache = new Map()
+
+function getCacheKey(endpoint, params) {
+  return `${endpoint}:${JSON.stringify(params)}`
+}
+
+function getCachedResponse(cacheKey) {
+  const cached = apiCache.get(cacheKey)
+  if (!cached) return null
+
+  const isExpired = Date.now() - cached.timestamp > CACHE_TTL_MS
+  if (isExpired) {
+    apiCache.delete(cacheKey)
+    return null
+  }
+
+  return cached.data
+}
+
+function setCachedResponse(cacheKey, data) {
+  apiCache.set(cacheKey, {
+    data,
+    timestamp: Date.now(),
+  })
+}
+
+// Clear expired cache entries periodically
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, value] of apiCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL_MS) {
+      apiCache.delete(key)
+    }
+  }
+}, 60000) // Check every minute
+
 // API quota tracking
 let apiQuota = {
   used: 0,
@@ -25,6 +63,17 @@ function notifyQuotaListeners() {
 
 export function getApiQuota() {
   return apiQuota
+}
+
+export function clearApiCache() {
+  apiCache.clear()
+}
+
+export function getCacheStats() {
+  return {
+    size: apiCache.size,
+    keys: Array.from(apiCache.keys()),
+  }
 }
 
 const DIET_MAP = {
@@ -59,9 +108,19 @@ const OSTOMY_EXCLUDE_INGREDIENTS = [
   'peas',
 ]
 
-async function fetchApi(endpoint, params = {}) {
+async function fetchApi(endpoint, params = {}, { useCache = true } = {}) {
   if (!API_KEY) {
     return getMockData(endpoint, params)
+  }
+
+  // Check cache first
+  const cacheKey = getCacheKey(endpoint, params)
+  if (useCache) {
+    const cachedData = getCachedResponse(cacheKey)
+    if (cachedData) {
+      console.log('Using cached response for:', endpoint)
+      return cachedData
+    }
   }
 
   const url = new URL(`${API_BASE_URL}${endpoint}`)
@@ -98,7 +157,14 @@ async function fetchApi(endpoint, params = {}) {
     throw new Error(`API error: ${response.status}`)
   }
 
-  return response.json()
+  const data = await response.json()
+
+  // Cache the successful response
+  if (useCache) {
+    setCachedResponse(cacheKey, data)
+  }
+
+  return data
 }
 
 export async function searchRecipes({

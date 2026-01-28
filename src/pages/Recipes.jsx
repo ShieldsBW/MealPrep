@@ -26,8 +26,11 @@ function Recipes() {
     loadRecipes()
   }, [])
 
-  const loadRecipes = async (query = '') => {
-    setIsLoading(true)
+  const loadRecipes = async (query = '', showLoading = true) => {
+    // Only show loading spinner if we don't have recipes yet
+    if (showLoading && recipes.length === 0) {
+      setIsLoading(true)
+    }
     setError(null)
     try {
       const result = await searchRecipes({
@@ -40,14 +43,17 @@ function Recipes() {
       setRecipes(result.results || MOCK_RECIPES)
     } catch (err) {
       setError(err.message)
-      setRecipes(MOCK_RECIPES)
+      if (recipes.length === 0) {
+        setRecipes(MOCK_RECIPES)
+      }
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleSearch = (query) => {
-    loadRecipes(query)
+    setIsLoading(true) // Show loading for explicit searches
+    loadRecipes(query, false)
   }
 
   const handleFilterChange = (newFilters) => {
