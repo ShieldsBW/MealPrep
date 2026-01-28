@@ -35,5 +35,8 @@ dist-ssr
 .env.test.local
 .env.production.local
 
+# API credentials
+docs/App Registration Details _ Kroger Developers.pdf
+
 # Testing
 coverage

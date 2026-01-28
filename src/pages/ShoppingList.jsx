@@ -1,13 +1,67 @@
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import ShoppingListView from '../components/ShoppingList/ShoppingListView'
+import KrogerStoreSelector from '../components/ShoppingList/KrogerStoreSelector'
+import {
+  isKrogerConfigured,
+  getSelectedStore,
+  analyzeShoppingList,
+  getPackageSize,
+  calculateLeftover,
+} from '../services/kroger'
 
 function ShoppingList() {
   const { shoppingList, toggleShoppingItem, clearShoppingList, mealPlan } = useApp()
+  const [krogerData, setKrogerData] = useState(null)
+  const [isLoadingPrices, setIsLoadingPrices] = useState(false)
+  const [priceError, setPriceError] = useState(null)
+
+  const loadKrogerPrices = useCallback(async () => {
+    if (!isKrogerConfigured() || shoppingList.length === 0) return
+
+    const store = getSelectedStore()
+    if (!store) return
+
+    setIsLoadingPrices(true)
+    setPriceError(null)
+
+    try {
+      const data = await analyzeShoppingList(shoppingList, store.id)
+      setKrogerData(data)
+    } catch (err) {
+      console.error('Error loading Kroger prices:', err)
+      setPriceError('Failed to load prices. Using estimates.')
+      // Still calculate leftovers even without Kroger prices
+      const itemsWithLeftovers = shoppingList.map(item => {
+        const packageSize = getPackageSize(item.name)
+        const leftoverInfo = packageSize
+          ? calculateLeftover(item.name, item.amount, item.unit, packageSize)
+          : null
+        return { ...item, packageSize, leftoverInfo }
+      })
+      setKrogerData({ items: itemsWithLeftovers, totalPrice: 0 })
+    } finally {
+      setIsLoadingPrices(false)
+    }
+  }, [shoppingList])
+
+  useEffect(() => {
+    loadKrogerPrices()
+  }, [loadKrogerPrices])
+
+  const handleStoreChange = (store) => {
+    if (store) {
+      loadKrogerPrices()
+    } else {
+      setKrogerData(null)
+    }
+  }
 
   const handleClear = () => {
     if (window.confirm('Are you sure you want to clear your shopping list?')) {
       clearShoppingList()
+      setKrogerData(null)
     }
   }
 
@@ -31,12 +85,41 @@ function ShoppingList() {
     )
   }
 
+  // Merge Kroger data with shopping list
+  const enrichedItems = krogerData?.items || shoppingList.map(item => ({
+    ...item,
+    packageSize: getPackageSize(item.name),
+    leftoverInfo: null,
+  }))
+
   return (
     <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h1 className="text-2xl font-bold text-gray-900">Shopping List</h1>
+        {isLoadingPrices && (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="w-4 h-4 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+            Loading prices...
+          </div>
+        )}
+      </div>
+
+      {isKrogerConfigured() && (
+        <KrogerStoreSelector onStoreChange={handleStoreChange} />
+      )}
+
+      {priceError && (
+        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+          {priceError}
+        </div>
+      )}
+
       <ShoppingListView
-        items={shoppingList}
+        items={enrichedItems}
         onToggleItem={toggleShoppingItem}
         onClear={handleClear}
+        krogerTotal={krogerData?.totalPrice}
+        hasKrogerPrices={Boolean(krogerData && getSelectedStore())}
       />
     </div>
   )
