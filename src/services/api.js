@@ -1,6 +1,32 @@
 const API_BASE_URL = 'https://api.spoonacular.com'
 const API_KEY = import.meta.env.VITE_SPOONACULAR_API_KEY
 
+// API quota tracking
+let apiQuota = {
+  used: 0,
+  remaining: 150,
+  total: 150,
+  lastUpdated: null,
+}
+
+let quotaListeners = []
+
+export function subscribeToQuota(callback) {
+  quotaListeners.push(callback)
+  callback(apiQuota)
+  return () => {
+    quotaListeners = quotaListeners.filter(cb => cb !== callback)
+  }
+}
+
+function notifyQuotaListeners() {
+  quotaListeners.forEach(cb => cb(apiQuota))
+}
+
+export function getApiQuota() {
+  return apiQuota
+}
+
 const DIET_MAP = {
   'vegetarian': 'vegetarian',
   'vegan': 'vegan',
@@ -13,6 +39,25 @@ const INTOLERANCE_MAP = {
   'gluten-free': 'gluten',
   'nut-free': 'tree nut,peanut',
 }
+
+// Foods to exclude for ostomy-safe meals
+const OSTOMY_EXCLUDE_INGREDIENTS = [
+  'peanut', 'peanuts', 'peanut butter',
+  'pickle', 'pickles', 'pickled',
+  'popcorn',
+  'corn on the cob',
+  'celery',
+  'coconut',
+  'dried fruit',
+  'fruit skin',
+  'mushroom', 'mushrooms',
+  'nuts', 'almonds', 'walnuts', 'cashews', 'pecans',
+  'seeds', 'sunflower seeds', 'chia seeds',
+  'raw vegetables',
+  'cabbage', 'sauerkraut',
+  'bean sprouts',
+  'peas',
+]
 
 async function fetchApi(endpoint, params = {}) {
   if (!API_KEY) {
@@ -30,8 +75,24 @@ async function fetchApi(endpoint, params = {}) {
 
   const response = await fetch(url.toString())
 
+  // Update quota from response headers
+  const requestsUsed = response.headers.get('X-API-Quota-Used')
+  const requestsRemaining = response.headers.get('X-API-Quota-Left')
+
+  if (requestsUsed !== null || requestsRemaining !== null) {
+    apiQuota = {
+      used: requestsUsed ? parseInt(requestsUsed) : apiQuota.used,
+      remaining: requestsRemaining ? parseFloat(requestsRemaining) : apiQuota.remaining,
+      total: 150, // Free tier limit
+      lastUpdated: new Date().toISOString(),
+    }
+    notifyQuotaListeners()
+  }
+
   if (!response.ok) {
     if (response.status === 402) {
+      apiQuota.remaining = 0
+      notifyQuotaListeners()
       throw new Error('API quota exceeded. Please try again tomorrow or use demo mode.')
     }
     throw new Error(`API error: ${response.status}`)
@@ -49,6 +110,7 @@ export async function searchRecipes({
   maxReadyTime = null,
   number = 12,
   offset = 0,
+  ostomySafe = false,
 }) {
   const dietString = diet
     .map(d => DIET_MAP[d])
@@ -59,11 +121,15 @@ export async function searchRecipes({
     ...intolerances.map(i => INTOLERANCE_MAP[i]).filter(Boolean),
   ].join(',')
 
+  // Add ostomy-unsafe ingredients to exclude list
+  const excludeIngredients = ostomySafe ? OSTOMY_EXCLUDE_INGREDIENTS.join(',') : ''
+
   return fetchApi('/recipes/complexSearch', {
     query,
     cuisine,
     diet: dietString,
     intolerances: intoleranceString,
+    excludeIngredients,
     type,
     maxReadyTime,
     number,
@@ -105,7 +171,23 @@ export async function getIngredientSubstitutes(ingredientName) {
   })
 }
 
+export async function getSimilarRecipes(recipeId, number = 5) {
+  return fetchApi(`/recipes/${recipeId}/similar`, {
+    number,
+  })
+}
+
 function getMockData(endpoint, params) {
+  // Set mock quota for demo mode
+  apiQuota = {
+    used: 0,
+    remaining: 150,
+    total: 150,
+    lastUpdated: new Date().toISOString(),
+    isDemo: true,
+  }
+  notifyQuotaListeners()
+
   if (endpoint.includes('/recipes/complexSearch') || endpoint.includes('/recipes/random')) {
     return { results: MOCK_RECIPES, totalResults: MOCK_RECIPES.length }
   }
@@ -115,7 +197,24 @@ function getMockData(endpoint, params) {
     return MOCK_RECIPES.find(r => r.id === id) || MOCK_RECIPES[0]
   }
 
+  if (endpoint.includes('/similar')) {
+    return MOCK_RECIPES.slice(0, 5)
+  }
+
   return { results: MOCK_RECIPES }
+}
+
+// Helper to check if a recipe is ostomy-safe
+export function isOstomySafe(recipe) {
+  if (!recipe.extendedIngredients) return true
+
+  const ingredientNames = recipe.extendedIngredients
+    .map(i => i.name?.toLowerCase() || '')
+    .join(' ')
+
+  return !OSTOMY_EXCLUDE_INGREDIENTS.some(exclude =>
+    ingredientNames.includes(exclude.toLowerCase())
+  )
 }
 
 const MOCK_RECIPES = [

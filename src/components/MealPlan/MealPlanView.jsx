@@ -1,7 +1,16 @@
 import { Link } from 'react-router-dom'
 import DayCard from './DayCard'
 
-function MealPlanView({ mealPlan, onViewRecipe, onRemoveMeal, onClearPlan }) {
+function formatPrepTime(minutes) {
+  if (!minutes) return '0m'
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  if (hours === 0) return `${mins}m`
+  if (mins === 0) return `${hours}h`
+  return `${hours}h ${mins}m`
+}
+
+function MealPlanView({ mealPlan, onViewRecipe, onRemoveMeal, onClearPlan, onReplaceMeal }) {
   if (!mealPlan) {
     return null
   }
@@ -34,7 +43,7 @@ function MealPlanView({ mealPlan, onViewRecipe, onRemoveMeal, onClearPlan }) {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <StatCard
             label="Total Meals"
             value={stats.totalMeals}
@@ -44,6 +53,11 @@ function MealPlanView({ mealPlan, onViewRecipe, onRemoveMeal, onClearPlan }) {
             label="Total Servings"
             value={stats.totalServings}
             icon={<UsersIcon className="w-5 h-5" />}
+          />
+          <StatCard
+            label="Total Prep Time"
+            value={formatPrepTime(stats.totalPrepTime)}
+            icon={<ClockIcon className="w-5 h-5" />}
           />
           <StatCard
             label="Avg Prep Time"
@@ -66,6 +80,7 @@ function MealPlanView({ mealPlan, onViewRecipe, onRemoveMeal, onClearPlan }) {
             meal={meal}
             onViewRecipe={onViewRecipe}
             onRemove={onRemoveMeal}
+            onReplace={onReplaceMeal}
           />
         ))}
       </div>

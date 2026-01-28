@@ -251,6 +251,7 @@ function calculatePlanStats(meals) {
   const stats = {
     totalMeals: meals.length,
     totalServings: 0,
+    totalPrepTime: 0,
     avgPrepTime: 0,
     avgCalories: 0,
     freezerFriendlyCount: 0,
@@ -260,7 +261,7 @@ function calculatePlanStats(meals) {
 
   for (const meal of meals) {
     stats.totalServings += meal.servings || 0
-    stats.avgPrepTime += meal.readyInMinutes || 0
+    stats.totalPrepTime += meal.readyInMinutes || 0
 
     if (meal.nutrition?.nutrients) {
       const calories = meal.nutrition.nutrients.find(n => n.name === 'Calories')
@@ -277,7 +278,7 @@ function calculatePlanStats(meals) {
   }
 
   if (meals.length > 0) {
-    stats.avgPrepTime = Math.round(stats.avgPrepTime / meals.length)
+    stats.avgPrepTime = Math.round(stats.totalPrepTime / meals.length)
     stats.avgCalories = Math.round(stats.avgCalories / meals.length)
   }
 

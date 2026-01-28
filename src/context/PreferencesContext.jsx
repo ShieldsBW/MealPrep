@@ -15,6 +15,7 @@ const defaultPreferences = {
 
 const DIETARY_OPTIONS = [
   { id: 'crohns-safe', label: "Crohn's/IBD Safe", description: 'Low-fiber, low-residue options' },
+  { id: 'ostomy-safe', label: 'Ostomy/Ileostomy Safe', description: 'Avoids high-fiber, difficult-to-digest foods' },
   { id: 'dairy-free', label: 'Dairy-Free', description: 'No milk products' },
   { id: 'gluten-free', label: 'Gluten-Free', description: 'No wheat, barley, rye' },
   { id: 'vegetarian', label: 'Vegetarian', description: 'No meat' },

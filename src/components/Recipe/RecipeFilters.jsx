@@ -25,6 +25,7 @@ function RecipeFilters({ filters, onFilterChange }) {
       cuisine: '',
       maxPrepTime: null,
       freezerFriendly: false,
+      ostomySafe: false,
     })
   }
 
@@ -33,6 +34,7 @@ function RecipeFilters({ filters, onFilterChange }) {
     filters.cuisine !== '',
     filters.maxPrepTime !== null,
     filters.freezerFriendly,
+    filters.ostomySafe,
   ].filter(Boolean).length
 
   return (
@@ -104,7 +106,7 @@ function RecipeFilters({ filters, onFilterChange }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <h4 className="label">Max Prep Time</h4>
               <select
@@ -136,6 +138,21 @@ function RecipeFilters({ filters, onFilterChange }) {
                   className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 />
                 <span className="text-gray-700">Freezer-friendly only</span>
+              </label>
+            </div>
+
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.ostomySafe}
+                  onChange={(e) => onFilterChange({
+                    ...filters,
+                    ostomySafe: e.target.checked
+                  })}
+                  className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-gray-700">Ostomy/Ileostomy safe</span>
               </label>
             </div>
           </div>

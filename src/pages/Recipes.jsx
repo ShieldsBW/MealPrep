@@ -4,6 +4,7 @@ import RecipeCard from '../components/Recipe/RecipeCard'
 import RecipeDetail from '../components/Recipe/RecipeDetail'
 import RecipeSearch from '../components/Recipe/RecipeSearch'
 import RecipeFilters from '../components/Recipe/RecipeFilters'
+import ApiCreditsDisplay from '../components/Common/ApiCreditsDisplay'
 import { searchRecipes, MOCK_RECIPES } from '../services/api'
 
 function Recipes() {
@@ -18,6 +19,7 @@ function Recipes() {
     cuisine: '',
     maxPrepTime: null,
     freezerFriendly: false,
+    ostomySafe: false,
   })
 
   useEffect(() => {
@@ -33,6 +35,7 @@ function Recipes() {
         diet: filters.diet,
         cuisine: filters.cuisine,
         maxReadyTime: filters.maxPrepTime,
+        ostomySafe: filters.ostomySafe,
       })
       setRecipes(result.results || MOCK_RECIPES)
     } catch (err) {
@@ -107,7 +110,14 @@ function Recipes() {
 
       {activeTab === 'browse' && (
         <div className="space-y-4">
-          <RecipeSearch onSearch={handleSearch} isLoading={isLoading} />
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <RecipeSearch onSearch={handleSearch} isLoading={isLoading} />
+            </div>
+            <div className="md:w-64">
+              <ApiCreditsDisplay />
+            </div>
+          </div>
           <RecipeFilters filters={filters} onFilterChange={handleFilterChange} />
         </div>
       )}
