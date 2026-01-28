@@ -1,15 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useApp } from '../context/AppContext'
 import RecipeCard from '../components/Recipe/RecipeCard'
 import RecipeDetail from '../components/Recipe/RecipeDetail'
 import RecipeSearch from '../components/Recipe/RecipeSearch'
 import RecipeFilters from '../components/Recipe/RecipeFilters'
 import ApiCreditsDisplay from '../components/Common/ApiCreditsDisplay'
-import { searchRecipes, MOCK_RECIPES } from '../services/api'
+import { searchRecipes, MOCK_RECIPES, clearSearchCache } from '../services/api'
+
+// Track if we've done initial load across component mounts
+let hasLoadedInitially = false
+let cachedRecipes = []
 
 function Recipes() {
   const { favorites, customRecipes } = useApp()
-  const [recipes, setRecipes] = useState([])
+  const [recipes, setRecipes] = useState(cachedRecipes)
   const [selectedRecipe, setSelectedRecipe] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -23,16 +27,23 @@ function Recipes() {
   })
 
   useEffect(() => {
-    loadRecipes()
+    // Only fetch on first ever load, not on page revisits
+    if (!hasLoadedInitially) {
+      hasLoadedInitially = true
+      loadRecipes()
+    }
   }, [])
 
-  const loadRecipes = async (query = '', showLoading = true) => {
-    // Only show loading spinner if we don't have recipes yet
-    if (showLoading && recipes.length === 0) {
-      setIsLoading(true)
-    }
+  const loadRecipes = async (query = '', forceRefresh = false) => {
+    setIsLoading(true)
     setError(null)
+
     try {
+      // Clear cache if this is a fresh search
+      if (forceRefresh) {
+        clearSearchCache()
+      }
+
       const result = await searchRecipes({
         query,
         diet: filters.diet,
@@ -40,11 +51,14 @@ function Recipes() {
         maxReadyTime: filters.maxPrepTime,
         ostomySafe: filters.ostomySafe,
       })
-      setRecipes(result.results || MOCK_RECIPES)
+      const newRecipes = result.results || MOCK_RECIPES
+      setRecipes(newRecipes)
+      cachedRecipes = newRecipes // Cache at module level for page revisits
     } catch (err) {
       setError(err.message)
       if (recipes.length === 0) {
         setRecipes(MOCK_RECIPES)
+        cachedRecipes = MOCK_RECIPES
       }
     } finally {
       setIsLoading(false)
@@ -52,8 +66,7 @@ function Recipes() {
   }
 
   const handleSearch = (query) => {
-    setIsLoading(true) // Show loading for explicit searches
-    loadRecipes(query, false)
+    loadRecipes(query, true) // Force refresh on explicit search
   }
 
   const handleFilterChange = (newFilters) => {
