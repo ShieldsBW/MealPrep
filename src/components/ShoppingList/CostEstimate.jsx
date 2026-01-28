@@ -1,4 +1,4 @@
-function CostEstimate({ items, totalEstimate, krogerTotal, hasKrogerPrices }) {
+function CostEstimate({ items, totalEstimate }) {
   const checkedCount = items.filter(i => i.checked).length
   const totalCount = items.length
   const progress = totalCount > 0 ? (checkedCount / totalCount) * 100 : 0
@@ -6,13 +6,6 @@ function CostEstimate({ items, totalEstimate, krogerTotal, hasKrogerPrices }) {
   // Calculate leftover summary
   const itemsWithLeftovers = items.filter(i => i.leftoverInfo?.leftover > 0)
   const hasLeftovers = itemsWithLeftovers.length > 0
-
-  // Calculate items with Kroger prices
-  const itemsWithPrices = items.filter(i => i.estimatedPrice || i.krogerProduct?.price)
-  const pricedCount = itemsWithPrices.length
-
-  // Use Kroger total if available, otherwise estimate
-  const displayTotal = hasKrogerPrices && krogerTotal > 0 ? krogerTotal : totalEstimate
 
   return (
     <div className="space-y-4">
@@ -33,20 +26,16 @@ function CostEstimate({ items, totalEstimate, krogerTotal, hasKrogerPrices }) {
             </div>
           </div>
 
-          {displayTotal > 0 && (
+          {totalEstimate > 0 && (
             <div className="pt-4 border-t border-gray-100">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">
-                  {hasKrogerPrices ? 'Kroger Total' : 'Estimated Total'}
-                </span>
+                <span className="text-gray-600">Estimated Total</span>
                 <span className="text-2xl font-bold text-primary-600">
-                  ${displayTotal.toFixed(2)}
+                  ${totalEstimate.toFixed(2)}
                 </span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                {hasKrogerPrices
-                  ? `Based on ${pricedCount} items with prices`
-                  : 'Based on average prices. Actual cost may vary.'}
+                Based on average prices. Actual cost may vary.
               </p>
             </div>
           )}

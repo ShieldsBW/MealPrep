@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import IngredientGroup from './IngredientGroup'
 import CostEstimate from './CostEstimate'
 
-function ShoppingListView({ items, onToggleItem, onClear, onExport, krogerTotal, hasKrogerPrices }) {
+function ShoppingListView({ items, onToggleItem, onClear, onExport }) {
   const groupedItems = useMemo(() => {
     const groups = {}
     for (const item of items) {
@@ -121,8 +121,6 @@ function ShoppingListView({ items, onToggleItem, onClear, onExport, krogerTotal,
             <CostEstimate
               items={items}
               totalEstimate={totalEstimate}
-              krogerTotal={krogerTotal}
-              hasKrogerPrices={hasKrogerPrices}
             />
           </div>
         </div>

@@ -24,40 +24,9 @@ function IngredientGroup({ aisle, items, onToggleItem }) {
                 className="mt-1 w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               />
               <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <div className={`font-medium ${item.checked ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                    {formatAmount(item.amount, item.unit)} {item.name}
-                  </div>
-                  {(item.krogerProduct?.price || item.estimatedPrice) && (
-                    <span className="text-sm font-medium text-green-600 whitespace-nowrap">
-                      ${(item.krogerProduct?.price || item.estimatedPrice).toFixed(2)}
-                    </span>
-                  )}
+                <div className={`font-medium ${item.checked ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                  {formatAmount(item.amount, item.unit)} {item.name}
                 </div>
-
-                {/* Kroger product info */}
-                {item.krogerProduct && (
-                  <div className="flex items-center gap-2 mt-1">
-                    {item.krogerProduct.image && (
-                      <img
-                        src={item.krogerProduct.image}
-                        alt=""
-                        className="w-8 h-8 object-contain rounded"
-                      />
-                    )}
-                    <div className="text-xs text-gray-500">
-                      {item.krogerProduct.brand && (
-                        <span className="font-medium">{item.krogerProduct.brand}</span>
-                      )}
-                      {item.krogerProduct.size && (
-                        <span> · {item.krogerProduct.size}</span>
-                      )}
-                      {!item.krogerProduct.inStock && (
-                        <span className="text-red-500 ml-1">(Out of stock)</span>
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 {/* Package/leftover info */}
                 {item.leftoverInfo && item.leftoverInfo.leftover > 0 && (

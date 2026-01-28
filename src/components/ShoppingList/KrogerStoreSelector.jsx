@@ -1,25 +1,45 @@
 import { useState } from 'react'
-import {
-  isKrogerConfigured,
-  searchStores,
-  getSelectedStore,
-  setSelectedStore,
-  clearSelectedStore,
-} from '../../services/kroger'
+
+// Kroger API requires a backend proxy due to CORS restrictions
+// For now, show a message about this limitation
+const KROGER_AVAILABLE = false // Set to true when backend proxy is available
 
 function KrogerStoreSelector({ onStoreChange }) {
+  const [showInfo, setShowInfo] = useState(false)
+
+  if (!KROGER_AVAILABLE) {
+    return (
+      <div className="card p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <KrogerLogo className="w-6 h-6" />
+            <h3 className="font-semibold text-gray-900">Store Pricing</h3>
+          </div>
+          <button
+            onClick={() => setShowInfo(!showInfo)}
+            className="text-sm text-primary-600 hover:underline"
+          >
+            {showInfo ? 'Hide' : 'Learn more'}
+          </button>
+        </div>
+        {showInfo && (
+          <p className="text-sm text-gray-600 mt-3">
+            Real-time Kroger pricing requires a backend server due to API restrictions.
+            Prices shown are estimates based on average costs. Leftover calculations
+            are based on typical package sizes.
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  // Original Kroger store selector code (for when backend is available)
   const [zipCode, setZipCode] = useState('')
   const [stores, setStores] = useState([])
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState(null)
   const [showSelector, setShowSelector] = useState(false)
-
-  const selectedStore = getSelectedStore()
-  const isConfigured = isKrogerConfigured()
-
-  if (!isConfigured) {
-    return null
-  }
+  const selectedStore = null
 
   const handleSearch = async () => {
     if (!zipCode || zipCode.length < 5) return
