@@ -16,13 +16,39 @@ function setCachedResponse(cacheKey, data) {
   apiCache.set(cacheKey, data)
 }
 
-// API quota tracking
-let apiQuota = {
-  used: 0,
-  remaining: 150,
-  total: 150,
-  lastUpdated: null,
+// API quota tracking - persist to localStorage
+function loadQuotaFromStorage() {
+  try {
+    const saved = localStorage.getItem('spoonacular_quota')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      // Check if it's from today (quota resets daily at midnight UTC)
+      const savedDate = new Date(parsed.lastUpdated).toISOString().split('T')[0]
+      const today = new Date().toISOString().split('T')[0]
+      if (savedDate === today) {
+        return parsed
+      }
+    }
+  } catch (e) {
+    console.error('Error loading quota from storage:', e)
+  }
+  return {
+    used: 0,
+    remaining: 150,
+    total: 150,
+    lastUpdated: null,
+  }
 }
+
+function saveQuotaToStorage(quota) {
+  try {
+    localStorage.setItem('spoonacular_quota', JSON.stringify(quota))
+  } catch (e) {
+    console.error('Error saving quota to storage:', e)
+  }
+}
+
+let apiQuota = loadQuotaFromStorage()
 
 let quotaListeners = []
 
@@ -131,12 +157,15 @@ async function fetchApi(endpoint, params = {}, { useCache = true } = {}) {
       total: 150, // Free tier limit
       lastUpdated: new Date().toISOString(),
     }
+    saveQuotaToStorage(apiQuota)
     notifyQuotaListeners()
   }
 
   if (!response.ok) {
     if (response.status === 402) {
       apiQuota.remaining = 0
+      apiQuota.lastUpdated = new Date().toISOString()
+      saveQuotaToStorage(apiQuota)
       notifyQuotaListeners()
       throw new Error('API quota exceeded. Please try again tomorrow or use demo mode.')
     }
