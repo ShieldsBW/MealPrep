@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 
 function Home() {
   const { mealPlan, favorites, shoppingList } = useApp()
+  const { user } = useAuth()
 
   const quickStats = [
     {
@@ -28,15 +30,16 @@ function Home() {
     },
   ]
 
+  const firstName = user?.displayName?.split(' ')[0] || 'there'
+
   return (
     <div className="space-y-8">
-      <section className="text-center py-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Welcome to MealPrep
+      <section className="py-4">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Welcome back, {firstName}!
         </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Plan your meals, optimize your shopping, and make meal prep effortless.
-          Save time and reduce food waste with smart meal planning.
+        <p className="text-gray-600">
+          Here&apos;s an overview of your meal prep progress.
         </p>
       </section>
 
@@ -60,60 +63,39 @@ function Home() {
         ))}
       </section>
 
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="card p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-          <div className="space-y-3">
-            <Link
-              to="/recipes"
-              className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
-            >
-              <SearchIcon className="w-5 h-5 text-gray-600" />
-              <div>
-                <div className="font-medium text-gray-900">Browse Recipes</div>
-                <div className="text-sm text-gray-600">Find new meal ideas</div>
-              </div>
-            </Link>
-            <Link
-              to="/meal-plan"
-              className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
-            >
-              <SparkleIcon className="w-5 h-5 text-gray-600" />
-              <div>
-                <div className="font-medium text-gray-900">Generate Meal Plan</div>
-                <div className="text-sm text-gray-600">Create a weekly plan</div>
-              </div>
-            </Link>
-            <Link
-              to="/shopping-list"
-              className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
-            >
-              <ClipboardIcon className="w-5 h-5 text-gray-600" />
-              <div>
-                <div className="font-medium text-gray-900">View Shopping List</div>
-                <div className="text-sm text-gray-600">Check off ingredients</div>
-              </div>
-            </Link>
-          </div>
-        </div>
-
-        <div className="card p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Features</h2>
-          <ul className="space-y-3">
-            {[
-              'Search recipes with dietary filters',
-              'Generate optimized meal plans',
-              'Consolidated shopping lists',
-              'Track freezer-friendly meals',
-              'Offline access to saved recipes',
-              'Mobile-friendly design',
-            ].map((feature) => (
-              <li key={feature} className="flex items-center gap-2 text-gray-700">
-                <CheckIcon className="w-5 h-5 text-primary-500 flex-shrink-0" />
-                {feature}
-              </li>
-            ))}
-          </ul>
+      <section className="card p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link
+            to="/recipes"
+            className="flex items-center gap-3 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <SearchIcon className="w-6 h-6 text-gray-600" />
+            <div>
+              <div className="font-medium text-gray-900">Browse Recipes</div>
+              <div className="text-sm text-gray-600">Find new meal ideas</div>
+            </div>
+          </Link>
+          <Link
+            to="/meal-plan"
+            className="flex items-center gap-3 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <SparkleIcon className="w-6 h-6 text-gray-600" />
+            <div>
+              <div className="font-medium text-gray-900">Generate Meal Plan</div>
+              <div className="text-sm text-gray-600">Create a weekly plan</div>
+            </div>
+          </Link>
+          <Link
+            to="/shopping-list"
+            className="flex items-center gap-3 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <ClipboardIcon className="w-6 h-6 text-gray-600" />
+            <div>
+              <div className="font-medium text-gray-900">View Shopping List</div>
+              <div className="text-sm text-gray-600">Check off ingredients</div>
+            </div>
+          </Link>
         </div>
       </section>
 
@@ -149,7 +131,20 @@ function Home() {
         </section>
       )}
 
-      <section className="text-center py-6">
+      {!mealPlan && (
+        <section className="card p-8 text-center bg-gradient-to-br from-primary-50 to-secondary-50">
+          <SparkleIcon className="w-12 h-12 text-primary-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Ready to Start Planning?</h2>
+          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+            Generate your first meal plan and let us create a shopping list for you.
+          </p>
+          <Link to="/meal-plan" className="btn-primary">
+            Create Meal Plan
+          </Link>
+        </section>
+      )}
+
+      <section className="text-center py-4">
         <p className="text-sm text-gray-500">
           {import.meta.env.VITE_SPOONACULAR_API_KEY
             ? 'Connected to Spoonacular API'
@@ -204,14 +199,6 @@ function ClipboardIcon({ className }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-    </svg>
-  )
-}
-
-function CheckIcon({ className }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
     </svg>
   )
 }

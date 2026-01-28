@@ -1,9 +1,18 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { loadFromStorage, saveToStorage } from '../utils/storage'
+import { useAuth } from './AuthContext'
+import {
+  saveFavorites,
+  saveCurrentMealPlan,
+  saveShoppingList,
+  getUserData
+} from '../services/firebase'
 
 const AppContext = createContext()
 
 export function AppProvider({ children }) {
+  const { user, isAuthenticated } = useAuth()
+
   const [favorites, setFavorites] = useState(() => {
     return loadFromStorage('favorites') || []
   })
@@ -20,9 +29,38 @@ export function AppProvider({ children }) {
     return loadFromStorage('shoppingList') || []
   })
 
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Load user data from Firestore when authenticated
+  useEffect(() => {
+    async function loadUserData() {
+      if (isAuthenticated && user) {
+        setIsLoading(true)
+        try {
+          const userData = await getUserData(user.uid)
+          if (userData) {
+            if (userData.favorites) setFavorites(userData.favorites)
+            if (userData.currentMealPlan) setMealPlan(userData.currentMealPlan)
+            if (userData.shoppingList) setShoppingList(userData.shoppingList)
+            if (userData.customRecipes) setCustomRecipes(userData.customRecipes)
+          }
+        } catch (err) {
+          console.error('Error loading user data:', err)
+        } finally {
+          setIsLoading(false)
+        }
+      }
+    }
+    loadUserData()
+  }, [isAuthenticated, user])
+
+  // Save to localStorage (always) and Firestore (if authenticated)
   useEffect(() => {
     saveToStorage('favorites', favorites)
-  }, [favorites])
+    if (isAuthenticated && user && !isLoading) {
+      saveFavorites(user.uid, favorites).catch(console.error)
+    }
+  }, [favorites, isAuthenticated, user, isLoading])
 
   useEffect(() => {
     saveToStorage('customRecipes', customRecipes)
@@ -30,11 +68,17 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     saveToStorage('mealPlan', mealPlan)
-  }, [mealPlan])
+    if (isAuthenticated && user && !isLoading) {
+      saveCurrentMealPlan(user.uid, mealPlan).catch(console.error)
+    }
+  }, [mealPlan, isAuthenticated, user, isLoading])
 
   useEffect(() => {
     saveToStorage('shoppingList', shoppingList)
-  }, [shoppingList])
+    if (isAuthenticated && user && !isLoading) {
+      saveShoppingList(user.uid, shoppingList).catch(console.error)
+    }
+  }, [shoppingList, isAuthenticated, user, isLoading])
 
   const addFavorite = useCallback((recipe) => {
     setFavorites(prev => {
@@ -112,6 +156,7 @@ export function AppProvider({ children }) {
     updateShoppingList,
     toggleShoppingItem,
     clearShoppingList,
+    isLoading,
   }
 
   return (
