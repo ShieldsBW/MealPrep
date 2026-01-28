@@ -43,7 +43,7 @@ function MealPlanView({ mealPlan, onViewRecipe, onRemoveMeal, onClearPlan, onRep
       </div>
 
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <StatCard
             label="Total Meals"
             value={stats.totalMeals}
@@ -65,8 +65,13 @@ function MealPlanView({ mealPlan, onViewRecipe, onRemoveMeal, onClearPlan, onRep
             icon={<ClockIcon className="w-5 h-5" />}
           />
           <StatCard
-            label="Est. Cost"
+            label="Est. Total"
             value={`$${stats.estimatedCost.toFixed(2)}`}
+            icon={<DollarIcon className="w-5 h-5" />}
+          />
+          <StatCard
+            label="Cost/Meal"
+            value={`$${stats.totalMeals > 0 ? (stats.estimatedCost / stats.totalMeals).toFixed(2) : '0.00'}`}
             icon={<DollarIcon className="w-5 h-5" />}
           />
         </div>
