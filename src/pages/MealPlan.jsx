@@ -103,16 +103,44 @@ function MealPlan() {
     }
   }
 
-  const handleRemoveMeal = (day) => {
+  const collectAllMeals = (schedule) => {
+    const meals = []
+    for (const item of schedule) {
+      if (item.slots) {
+        for (const slotData of Object.values(item.slots)) {
+          if (slotData?.meal) meals.push(slotData.meal)
+        }
+      } else if (item.meal) {
+        meals.push(item.meal)
+      }
+    }
+    return meals
+  }
+
+  const handleRemoveMeal = (day, slot = 'dinner') => {
     if (!mealPlan) return
 
-    const updatedSchedule = mealPlan.schedule.map(item =>
-      item.day === day ? { ...item, meal: null } : item
-    )
+    const isNewFormat = mealPlan.schedule[0]?.slots
 
-    const updatedMeals = updatedSchedule
-      .filter(item => item.meal)
-      .map(item => item.meal)
+    let updatedSchedule
+    if (isNewFormat) {
+      updatedSchedule = mealPlan.schedule.map(item => {
+        if (item.day !== day) return item
+        return {
+          ...item,
+          slots: {
+            ...item.slots,
+            [slot]: { ...item.slots[slot], meal: null },
+          },
+        }
+      })
+    } else {
+      updatedSchedule = mealPlan.schedule.map(item =>
+        item.day === day ? { ...item, meal: null } : item
+      )
+    }
+
+    const updatedMeals = collectAllMeals(updatedSchedule)
 
     const updatedPlan = {
       ...mealPlan,
@@ -124,8 +152,13 @@ function MealPlan() {
     updateShoppingList(generateShoppingList(updatedMeals))
   }
 
-  const handleReplaceMeal = async (day, currentMeal) => {
-    setReplaceModal({ day, currentMeal })
+  const handleReplaceMeal = async (day, slot = 'dinner', currentMeal) => {
+    // Support both old signature (day, currentMeal) and new (day, slot, currentMeal)
+    if (typeof slot === 'object') {
+      currentMeal = slot
+      slot = 'dinner'
+    }
+    setReplaceModal({ day, slot, currentMeal })
     setIsLoadingReplacements(true)
 
     try {
@@ -168,13 +201,28 @@ function MealPlan() {
   const confirmReplaceMeal = (newRecipe) => {
     if (!mealPlan || !replaceModal) return
 
-    const updatedSchedule = mealPlan.schedule.map(item =>
-      item.day === replaceModal.day ? { ...item, meal: newRecipe } : item
-    )
+    const { day, slot = 'dinner' } = replaceModal
+    const isNewFormat = mealPlan.schedule[0]?.slots
 
-    const updatedMeals = updatedSchedule
-      .filter(item => item.meal)
-      .map(item => item.meal)
+    let updatedSchedule
+    if (isNewFormat) {
+      updatedSchedule = mealPlan.schedule.map(item => {
+        if (item.day !== day) return item
+        return {
+          ...item,
+          slots: {
+            ...item.slots,
+            [slot]: { ...item.slots[slot], meal: newRecipe },
+          },
+        }
+      })
+    } else {
+      updatedSchedule = mealPlan.schedule.map(item =>
+        item.day === day ? { ...item, meal: newRecipe } : item
+      )
+    }
+
+    const updatedMeals = collectAllMeals(updatedSchedule)
 
     const updatedPlan = {
       ...mealPlan,
@@ -281,7 +329,7 @@ function MealPlan() {
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Replace Recipe for {replaceModal.day}
+                  Replace {replaceModal.slot !== 'dinner' || mealPlan?.preferences?.mealSlots > 1 ? `${replaceModal.slot} ` : ''}Recipe for {replaceModal.day}
                 </h3>
                 <p className="text-sm text-gray-600">
                   Currently: {replaceModal.currentMeal.title}

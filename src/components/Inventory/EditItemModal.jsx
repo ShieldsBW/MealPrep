@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { estimateExpiration } from '../../utils/expirationData'
+import { FOOD_GROUPS, suggestFoodGroup } from '../../utils/foodGroups'
 
 function EditItemModal({ item, onClose, onSave }) {
   const [name, setName] = useState(item.displayName || item.name || '')
   const [section, setSection] = useState(item.section || 'fridge')
+  const [foodGroup, setFoodGroup] = useState(item.foodGroup || suggestFoodGroup(item.name))
   const [amount, setAmount] = useState(item.amount != null ? String(item.amount) : '')
   const [unit, setUnit] = useState(item.unit || '')
   const [dateMode, setDateMode] = useState(item.purchasedDate ? 'purchased' : 'expiration')
@@ -37,6 +39,7 @@ function EditItemModal({ item, onClose, onSave }) {
       name: name.trim().toLowerCase(),
       displayName: name.trim(),
       section,
+      foodGroup,
       amount: amount ? parseFloat(amount) : null,
       unit: unit || null,
       expirationDate,
@@ -72,20 +75,36 @@ function EditItemModal({ item, onClose, onSave }) {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Section
-            </label>
-            <select
-              value={section}
-              onChange={(e) => setSection(e.target.value)}
-              className="input w-full"
-            >
-              <option value="fridge">Fridge</option>
-              <option value="pantry">Pantry</option>
-              <option value="freezer">Freezer</option>
-              <option value="spices">Spices</option>
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Section
+              </label>
+              <select
+                value={section}
+                onChange={(e) => setSection(e.target.value)}
+                className="input w-full"
+              >
+                <option value="fridge">Fridge</option>
+                <option value="pantry">Pantry</option>
+                <option value="freezer">Freezer</option>
+                <option value="spices">Spices</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Food Group
+              </label>
+              <select
+                value={foodGroup}
+                onChange={(e) => setFoodGroup(e.target.value)}
+                className="input w-full"
+              >
+                {FOOD_GROUPS.map(({ key, label, emoji }) => (
+                  <option key={key} value={key}>{emoji} {label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

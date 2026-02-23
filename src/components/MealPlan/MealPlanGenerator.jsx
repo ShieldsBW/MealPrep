@@ -88,6 +88,30 @@ function MealPlanGenerator({ onGenerate, isGenerating }) {
             </select>
           </div>
 
+          <div>
+            <label className="label">Meals per day</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { value: 1, label: 'Dinner only' },
+                { value: 2, label: 'Lunch + Dinner' },
+                { value: 3, label: 'All 3 Meals' },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => updatePreference('mealSlots', value)}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    (preferences.mealSlots || 1) === value
+                      ? 'bg-primary-100 text-primary-700 border-2 border-primary-500'
+                      : 'bg-gray-50 text-gray-700 border-2 border-transparent hover:bg-gray-100'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <label className="flex items-center gap-2 cursor-pointer mt-4">
             <input
               type="checkbox"
@@ -173,6 +197,11 @@ function MealPlanGenerator({ onGenerate, isGenerating }) {
             <ul className="text-sm text-gray-600 space-y-1">
               <li>{preferences.mealsPerWeek} meals per week</li>
               <li>{preferences.servingsPerMeal} servings per meal</li>
+              <li>
+                {(preferences.mealSlots || 1) === 1 && 'Dinner only'}
+                {(preferences.mealSlots || 1) === 2 && 'Lunch + Dinner'}
+                {(preferences.mealSlots || 1) === 3 && 'Breakfast + Lunch + Dinner'}
+              </li>
               <li>Max {preferences.maxPrepTimeMinutes} min prep time</li>
               {preferences.dietaryRestrictions.length > 0 && (
                 <li>Dietary: {preferences.dietaryRestrictions.join(', ')}</li>

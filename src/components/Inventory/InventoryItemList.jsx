@@ -1,6 +1,7 @@
 import InventoryItemCard from './InventoryItemCard'
+import InventoryGridCard from './InventoryGridCard'
 
-function InventoryItemList({ items, onEdit, onDelete }) {
+function InventoryItemList({ items, onEdit, onDelete, viewMode = 'list' }) {
   if (items.length === 0) {
     return (
       <div className="text-center py-12">
@@ -11,6 +12,21 @@ function InventoryItemList({ items, onEdit, onDelete }) {
         <p className="text-gray-600">
           Add items to your pantry to start tracking your inventory.
         </p>
+      </div>
+    )
+  }
+
+  if (viewMode === 'grid') {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        {items.map(item => (
+          <InventoryGridCard
+            key={item.id}
+            item={item}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
       </div>
     )
   }

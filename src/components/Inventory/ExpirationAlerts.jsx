@@ -1,5 +1,6 @@
 import { useInventory } from '../../context/InventoryContext'
 import { formatRelativeDate } from '../../utils/expirationData'
+import { getFoodEmoji } from '../../utils/foodEmojis'
 
 function ExpirationAlerts() {
   const { getExpiredItems, getExpiringItems, removeItem } = useInventory()
@@ -32,7 +33,7 @@ function ExpirationAlerts() {
               <li key={item.id} className="px-4 py-3 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium text-gray-900">
-                    {item.displayName || item.name}
+                    {getFoodEmoji(item.name, item.section)} {item.displayName || item.name}
                   </div>
                   <div className="text-xs text-red-600">
                     Expired {formatRelativeDate(item.expirationDate)}
@@ -62,7 +63,7 @@ function ExpirationAlerts() {
             {expiringItems.map(item => (
               <li key={item.id} className="px-4 py-3">
                 <div className="text-sm font-medium text-gray-900">
-                  {item.displayName || item.name}
+                  {getFoodEmoji(item.name, item.section)} {item.displayName || item.name}
                 </div>
                 <div className="text-xs text-amber-600">
                   Expires {formatRelativeDate(item.expirationDate)}

@@ -1,5 +1,12 @@
 import { Link } from 'react-router-dom'
 import DayCard from './DayCard'
+import DayColumn from './DayColumn'
+
+const SLOT_CONFIGS = {
+  1: ['dinner'],
+  2: ['lunch', 'dinner'],
+  3: ['breakfast', 'lunch', 'dinner'],
+}
 
 function formatPrepTime(minutes) {
   if (!minutes) return '0m'
@@ -10,12 +17,32 @@ function formatPrepTime(minutes) {
   return `${hours}h ${mins}m`
 }
 
+// Detect old-format plans and normalize to new format
+function normalizeSchedule(schedule, mealSlots) {
+  if (!schedule || schedule.length === 0) return []
+
+  // Check if already new format (has `slots` property)
+  if (schedule[0].slots) return schedule
+
+  // Old format: flat array with { day, meal, prepDay }
+  return schedule.map(item => ({
+    day: item.day,
+    slots: {
+      dinner: { meal: item.meal, prepDay: item.prepDay },
+    },
+  }))
+}
+
 function MealPlanView({ mealPlan, onViewRecipe, onRemoveMeal, onClearPlan, onReplaceMeal }) {
   if (!mealPlan) {
     return null
   }
 
-  const { schedule, stats, createdAt } = mealPlan
+  const { schedule: rawSchedule, stats, createdAt, preferences } = mealPlan
+  const mealSlots = preferences?.mealSlots || 1
+  const activeSlots = SLOT_CONFIGS[mealSlots] || ['dinner']
+  const schedule = normalizeSchedule(rawSchedule, mealSlots)
+  const isMultiSlot = activeSlots.length > 1
 
   return (
     <div className="space-y-6">
@@ -77,18 +104,34 @@ function MealPlanView({ mealPlan, onViewRecipe, onRemoveMeal, onClearPlan, onRep
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {schedule.map(({ day, meal }) => (
-          <DayCard
-            key={day}
-            day={day}
-            meal={meal}
-            onViewRecipe={onViewRecipe}
-            onRemove={onRemoveMeal}
-            onReplace={onReplaceMeal}
-          />
-        ))}
-      </div>
+      {isMultiSlot ? (
+        <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4`}>
+          {schedule.map(({ day, slots }) => (
+            <DayColumn
+              key={day}
+              day={day}
+              slots={slots}
+              activeSlots={activeSlots}
+              onViewRecipe={onViewRecipe}
+              onRemoveMeal={onRemoveMeal}
+              onReplaceMeal={onReplaceMeal}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {schedule.map(({ day, slots }) => (
+            <DayCard
+              key={day}
+              day={day}
+              meal={slots.dinner?.meal}
+              onViewRecipe={onViewRecipe}
+              onRemove={onRemoveMeal ? () => onRemoveMeal(day, 'dinner') : undefined}
+              onReplace={onReplaceMeal ? () => onReplaceMeal(day, 'dinner', slots.dinner?.meal) : undefined}
+            />
+          ))}
+        </div>
+      )}
 
       {stats?.cuisines?.length > 0 && (
         <div className="card p-4">

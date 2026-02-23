@@ -1,4 +1,6 @@
 import { getFreshnessStatus, formatRelativeDate } from '../../utils/expirationData'
+import { FOOD_GROUPS } from '../../utils/foodGroups'
+import { getFoodEmoji } from '../../utils/foodEmojis'
 
 function InventoryItemCard({ item, onEdit, onDelete }) {
   const freshness = getFreshnessStatus(item)
@@ -16,8 +18,13 @@ function InventoryItemCard({ item, onEdit, onDelete }) {
     ? `${item.amount} ${item.unit || ''}`.trim()
     : null
 
+  const emoji = getFoodEmoji(item.name, item.section)
+
   return (
     <div className="card p-4 flex items-center gap-4">
+      <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-3xl shrink-0">
+        {emoji}
+      </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <h3 className="font-medium text-gray-900 truncate">
@@ -46,6 +53,14 @@ function InventoryItemCard({ item, onEdit, onDelete }) {
           )}
 
           <span className="text-gray-400 capitalize">{item.section}</span>
+          {item.foodGroup && (() => {
+            const group = FOOD_GROUPS.find(g => g.key === item.foodGroup)
+            return group ? (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-600">
+                {group.emoji} {group.label}
+              </span>
+            ) : null
+          })()}
         </div>
 
         {item.notes && (

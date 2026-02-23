@@ -1,3 +1,9 @@
+const SLOT_CONFIGS = {
+  1: ['dinner'],
+  2: ['lunch', 'dinner'],
+  3: ['breakfast', 'lunch', 'dinner'],
+}
+
 export function generateMealPlan(recipes, preferences, inventory = []) {
   const {
     mealsPerWeek = 5,
@@ -6,7 +12,10 @@ export function generateMealPlan(recipes, preferences, inventory = []) {
     proteinPreferences = [],
     freezerFriendly = false,
     maxPrepTimeMinutes = 60,
+    mealSlots = 1,
   } = preferences
+
+  const activeSlots = SLOT_CONFIGS[mealSlots] || ['dinner']
 
   let filteredRecipes = recipes.filter(recipe => {
     if (maxPrepTimeMinutes && recipe.readyInMinutes > maxPrepTimeMinutes) {
@@ -39,6 +48,7 @@ export function generateMealPlan(recipes, preferences, inventory = []) {
     filteredRecipes = recipes
   }
 
+  // Score all recipes
   const scoredRecipes = filteredRecipes.map(recipe => ({
     recipe,
     score: calculateRecipeScore(recipe, preferences, filteredRecipes, inventory),
@@ -46,15 +56,37 @@ export function generateMealPlan(recipes, preferences, inventory = []) {
 
   scoredRecipes.sort((a, b) => b.score - a.score)
 
-  const selectedMeals = selectMealsWithVariety(
-    scoredRecipes,
-    mealsPerWeek,
-    cuisinePreferences
-  )
+  // Select meals independently per slot
+  const selectedBySlot = {}
+  for (const slot of activeSlots) {
+    const slotRecipes = scoredRecipes.filter(({ recipe }) => {
+      if (!recipe.mealTypes || recipe.mealTypes.length === 0) {
+        // Recipes without mealTypes default to dinner
+        return slot === 'dinner'
+      }
+      return recipe.mealTypes.includes(slot)
+    })
 
-  const schedule = createWeeklySchedule(selectedMeals, mealsPerWeek)
+    // Fallback: if no recipes match this slot, use all recipes
+    const pool = slotRecipes.length > 0 ? slotRecipes : scoredRecipes
 
-  let shoppingList = generateShoppingList(selectedMeals)
+    selectedBySlot[slot] = selectMealsWithVariety(
+      pool,
+      mealsPerWeek,
+      cuisinePreferences
+    )
+  }
+
+  // Build schedule
+  const schedule = createMultiSlotSchedule(selectedBySlot, mealsPerWeek, activeSlots)
+
+  // Collect all meals from all slots for shopping list
+  const allMeals = []
+  for (const slot of activeSlots) {
+    allMeals.push(...(selectedBySlot[slot] || []))
+  }
+
+  let shoppingList = generateShoppingList(allMeals)
 
   if (inventory.length > 0) {
     shoppingList = subtractInventoryFromShoppingList(shoppingList, inventory)
@@ -62,13 +94,90 @@ export function generateMealPlan(recipes, preferences, inventory = []) {
 
   return {
     id: Date.now(),
+    version: 2,
     createdAt: new Date().toISOString(),
-    meals: selectedMeals,
+    meals: allMeals,
     schedule,
     shoppingList,
     preferences,
-    stats: calculatePlanStats(selectedMeals),
+    stats: calculatePlanStats(allMeals),
   }
+}
+
+function createMultiSlotSchedule(selectedBySlot, mealsPerWeek, activeSlots) {
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  const dayCount = Math.min(mealsPerWeek, 7)
+
+  // Arrange each slot's meals with no consecutive repeat
+  const arrangedBySlot = {}
+  for (const slot of activeSlots) {
+    arrangedBySlot[slot] = arrangeWithNoConsecutiveRepeat(
+      selectedBySlot[slot] || [],
+      dayCount
+    )
+  }
+
+  const schedule = []
+  for (let i = 0; i < dayCount; i++) {
+    const day = days[i]
+    const slots = {}
+    for (const slot of activeSlots) {
+      const meal = arrangedBySlot[slot][i] || null
+      slots[slot] = {
+        meal,
+        prepDay: meal && meal.readyInMinutes > 40 ? day : null,
+      }
+    }
+    schedule.push({ day, slots })
+  }
+
+  return schedule
+}
+
+function arrangeWithNoConsecutiveRepeat(meals, count) {
+  if (meals.length === 0) return Array(count).fill(null)
+  if (meals.length === 1) return Array(count).fill(meals[0])
+
+  // Spread meals across days, avoiding same recipe on consecutive days
+  const result = []
+  const available = [...meals]
+
+  for (let i = 0; i < count; i++) {
+    const prevMeal = result[i - 1]
+    // Find a meal different from previous
+    let picked = null
+    for (let j = 0; j < available.length; j++) {
+      if (!prevMeal || available[j].id !== prevMeal.id) {
+        picked = available[j]
+        break
+      }
+    }
+    if (!picked) {
+      // All are same as previous, just pick first
+      picked = available[0]
+    }
+    result.push(picked)
+    // Rotate: move used meal to end
+    const idx = available.indexOf(picked)
+    if (idx !== -1) {
+      available.splice(idx, 1)
+      available.push(picked)
+    }
+  }
+
+  return result
+}
+
+// Backward-compat wrapper: old format is flat schedule
+function createWeeklySchedule(meals, mealsPerWeek) {
+  const selectedBySlot = { dinner: meals }
+  const schedule = createMultiSlotSchedule(selectedBySlot, mealsPerWeek, ['dinner'])
+  // Flatten to old format
+  return schedule.map(({ day, slots }) => ({
+    day,
+    meal: slots.dinner?.meal || null,
+    prepDay: slots.dinner?.prepDay || null,
+  }))
 }
 
 function calculateRecipeScore(recipe, preferences, allRecipes, inventory = []) {
@@ -183,44 +292,6 @@ function selectMealsWithVariety(scoredRecipes, count, cuisinePreferences) {
   }
 
   return selected
-}
-
-function createWeeklySchedule(meals, mealsPerWeek) {
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-  const schedule = []
-
-  const prepIntensive = meals.filter(m => m.readyInMinutes > 40)
-  const quickMeals = meals.filter(m => m.readyInMinutes <= 40)
-
-  const weekendDays = ['Saturday', 'Sunday']
-  const weekdays = days.filter(d => !weekendDays.includes(d))
-
-  let mealIndex = 0
-  let prepIndex = 0
-  let quickIndex = 0
-
-  for (let i = 0; i < Math.min(mealsPerWeek, 7); i++) {
-    const day = days[i]
-    let meal
-
-    if (weekendDays.includes(day) && prepIntensive.length > prepIndex) {
-      meal = prepIntensive[prepIndex++]
-    } else if (quickMeals.length > quickIndex) {
-      meal = quickMeals[quickIndex++]
-    } else if (mealIndex < meals.length) {
-      meal = meals[mealIndex++]
-    }
-
-    if (meal) {
-      schedule.push({
-        day,
-        meal,
-        prepDay: meal.readyInMinutes > 40 ? day : null,
-      })
-    }
-  }
-
-  return schedule
 }
 
 export function generateShoppingList(meals) {

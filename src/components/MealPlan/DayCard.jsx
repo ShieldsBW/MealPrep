@@ -1,10 +1,11 @@
-function DayCard({ day, meal, onViewRecipe, onRemove, onReplace }) {
+function DayCard({ day, slotLabel, meal, onViewRecipe, onRemove, onReplace }) {
   if (!meal) {
     return (
       <div className="card p-4 border-dashed border-2 border-gray-200 bg-gray-50">
         <div className="text-center text-gray-500 py-8">
           <CalendarIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="font-medium">{day}</p>
+          {day && <p className="font-medium">{day}</p>}
+          {slotLabel && <p className="font-medium">{slotLabel}</p>}
           <p className="text-sm">No meal planned</p>
         </div>
       </div>
@@ -12,6 +13,12 @@ function DayCard({ day, meal, onViewRecipe, onRemove, onReplace }) {
   }
 
   const calories = meal.nutrition?.nutrients?.find(n => n.name === 'Calories')
+
+  const slotColors = {
+    'Breakfast': 'bg-amber-100 text-amber-700',
+    'Lunch': 'bg-blue-100 text-blue-700',
+    'Dinner': 'bg-purple-100 text-purple-700',
+  }
 
   return (
     <div className="card overflow-hidden">
@@ -21,9 +28,16 @@ function DayCard({ day, meal, onViewRecipe, onRemove, onReplace }) {
           alt={meal.title}
           className="w-full h-32 object-cover"
         />
-        <div className="absolute top-2 left-2 bg-white px-2 py-1 rounded-lg text-sm font-semibold text-gray-700">
-          {day}
-        </div>
+        {day && (
+          <div className="absolute top-2 left-2 bg-white px-2 py-1 rounded-lg text-sm font-semibold text-gray-700">
+            {day}
+          </div>
+        )}
+        {slotLabel && (
+          <div className={`absolute top-2 left-2 px-2 py-1 rounded-lg text-xs font-semibold ${slotColors[slotLabel] || 'bg-gray-100 text-gray-700'}`}>
+            {slotLabel}
+          </div>
+        )}
         {meal.freezable && (
           <div className="absolute top-2 right-2 badge-blue text-xs">
             Freezable
@@ -65,7 +79,7 @@ function DayCard({ day, meal, onViewRecipe, onRemove, onReplace }) {
           </button>
           {onReplace && (
             <button
-              onClick={() => onReplace(day, meal)}
+              onClick={() => typeof onReplace === 'function' && onReplace(day, meal)}
               className="p-2 text-gray-400 hover:text-primary-500 transition-colors"
               title="Replace recipe"
             >
@@ -74,7 +88,7 @@ function DayCard({ day, meal, onViewRecipe, onRemove, onReplace }) {
           )}
           {onRemove && (
             <button
-              onClick={() => onRemove(day)}
+              onClick={() => typeof onRemove === 'function' && onRemove(day)}
               className="p-2 text-gray-400 hover:text-red-500 transition-colors"
               title="Remove meal"
             >

@@ -3,6 +3,7 @@ import { loadFromStorage, saveToStorage } from '../utils/storage'
 import { useAuth } from './AuthContext'
 import { saveInventory, getUserData } from '../services/firebase'
 import { getFreshnessStatus } from '../utils/expirationData'
+import { suggestFoodGroup } from '../utils/foodGroups'
 
 const InventoryContext = createContext()
 
@@ -10,7 +11,14 @@ export function InventoryProvider({ children }) {
   const { user, isAuthenticated } = useAuth()
 
   const [inventory, setInventory] = useState(() => {
-    return loadFromStorage('inventory') || []
+    const saved = loadFromStorage('inventory') || []
+    // Migrate: auto-assign foodGroup for items missing it
+    return saved.map(item => {
+      if (!item.foodGroup) {
+        return { ...item, foodGroup: suggestFoodGroup(item.name) }
+      }
+      return item
+    })
   })
 
   const [isLoading, setIsLoading] = useState(false)

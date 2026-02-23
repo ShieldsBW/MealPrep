@@ -11,6 +11,7 @@ const defaultPreferences = {
   servingsPerMeal: 4,
   maxPrepTimeMinutes: 60,
   freezerFriendly: false,
+  mealSlots: 1,
 }
 
 const DIETARY_OPTIONS = [
