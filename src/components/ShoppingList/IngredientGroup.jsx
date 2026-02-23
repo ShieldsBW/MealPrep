@@ -15,7 +15,7 @@ function IngredientGroup({ aisle, items, onToggleItem }) {
 
       <ul className="divide-y divide-gray-50">
         {items.map((item) => (
-          <li key={item.id} className="p-3 hover:bg-gray-50">
+          <li key={item.id} className={`p-3 hover:bg-gray-50 ${item.coveredByInventory ? 'opacity-50' : ''}`}>
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -24,9 +24,35 @@ function IngredientGroup({ aisle, items, onToggleItem }) {
                 className="mt-1 w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               />
               <div className="flex-1 min-w-0">
-                <div className={`font-medium ${item.checked ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                  {formatAmount(item.amount, item.unit)} {item.name}
+                <div className={`font-medium ${item.coveredByInventory ? 'line-through text-gray-400' : item.checked ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                  {item.adjustedAmount != null && item.adjustedAmount > 0
+                    ? `${formatAmount(item.adjustedAmount, item.unit)} ${item.name}`
+                    : `${formatAmount(item.amount, item.unit)} ${item.name}`
+                  }
                 </div>
+
+                {/* Fully covered by inventory */}
+                {item.coveredByInventory && (
+                  <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <span className="inline-block w-3 h-3 bg-green-100 rounded-full text-center leading-3">&#10003;</span>
+                    Fully covered by pantry
+                  </div>
+                )}
+
+                {/* Partially on hand */}
+                {item.onHand && !item.coveredByInventory && item.adjustedAmount > 0 && (
+                  <div className="text-xs text-green-600 mt-1">
+                    Need {formatAmount(item.adjustedAmount, item.unit)} more (you have {formatAmount(item.onHandAmount, item.onHandUnit || item.unit)})
+                  </div>
+                )}
+
+                {/* On hand with note */}
+                {item.onHand && !item.coveredByInventory && item.onHandNote && !item.adjustedAmount && (
+                  <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
+                    {item.onHandNote}
+                  </div>
+                )}
 
                 {/* Package/leftover info */}
                 {item.leftoverInfo && item.leftoverInfo.leftover > 0 && (

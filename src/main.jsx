@@ -5,6 +5,7 @@ import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { AppProvider } from './context/AppContext.jsx'
 import { PreferencesProvider } from './context/PreferencesContext.jsx'
+import { InventoryProvider } from './context/InventoryContext.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -13,7 +14,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <AuthProvider>
         <PreferencesProvider>
           <AppProvider>
-            <App />
+            <InventoryProvider>
+              <App />
+            </InventoryProvider>
           </AppProvider>
         </PreferencesProvider>
       </AuthProvider>

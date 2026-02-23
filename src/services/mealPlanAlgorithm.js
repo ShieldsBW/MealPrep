@@ -1,4 +1,4 @@
-export function generateMealPlan(recipes, preferences) {
+export function generateMealPlan(recipes, preferences, inventory = []) {
   const {
     mealsPerWeek = 5,
     dietaryRestrictions = [],
@@ -41,7 +41,7 @@ export function generateMealPlan(recipes, preferences) {
 
   const scoredRecipes = filteredRecipes.map(recipe => ({
     recipe,
-    score: calculateRecipeScore(recipe, preferences, filteredRecipes),
+    score: calculateRecipeScore(recipe, preferences, filteredRecipes, inventory),
   }))
 
   scoredRecipes.sort((a, b) => b.score - a.score)
@@ -54,7 +54,11 @@ export function generateMealPlan(recipes, preferences) {
 
   const schedule = createWeeklySchedule(selectedMeals, mealsPerWeek)
 
-  const shoppingList = generateShoppingList(selectedMeals)
+  let shoppingList = generateShoppingList(selectedMeals)
+
+  if (inventory.length > 0) {
+    shoppingList = subtractInventoryFromShoppingList(shoppingList, inventory)
+  }
 
   return {
     id: Date.now(),
@@ -67,7 +71,7 @@ export function generateMealPlan(recipes, preferences) {
   }
 }
 
-function calculateRecipeScore(recipe, preferences, allRecipes) {
+function calculateRecipeScore(recipe, preferences, allRecipes, inventory = []) {
   let score = 50
 
   if (recipe.healthScore) {
@@ -96,6 +100,20 @@ function calculateRecipeScore(recipe, preferences, allRecipes) {
 
   if (recipe.veryPopular) {
     score += 5
+  }
+
+  // Bonus for recipes using on-hand inventory items
+  if (inventory.length > 0 && recipe.extendedIngredients?.length > 0) {
+    const inventoryNames = inventory.map(i => (i.name || '').toLowerCase())
+    let matchCount = 0
+    for (const ing of recipe.extendedIngredients) {
+      const ingName = (ing.name || '').toLowerCase()
+      if (inventoryNames.some(inv => inv.includes(ingName) || ingName.includes(inv))) {
+        matchCount++
+      }
+    }
+    const matchRatio = matchCount / recipe.extendedIngredients.length
+    score += matchRatio * 25
   }
 
   return score
@@ -332,4 +350,90 @@ function calculatePairwiseOverlap(recipe1, recipe2) {
   }
 
   return overlap
+}
+
+// Unit normalization for inventory comparison
+const UNIT_ALIASES = {
+  'lb': 'lbs', 'pound': 'lbs', 'pounds': 'lbs',
+  'oz': 'oz', 'ounce': 'oz', 'ounces': 'oz',
+  'cup': 'cups', 'c': 'cups',
+  'tbsp': 'tbsp', 'tablespoon': 'tbsp', 'tablespoons': 'tbsp',
+  'tsp': 'tsp', 'teaspoon': 'tsp', 'teaspoons': 'tsp',
+  'clove': 'cloves',
+  'piece': 'count', 'pieces': 'count', 'count': 'count',
+  'can': 'cans', 'jar': 'jars',
+}
+
+function normalizeUnit(unit) {
+  if (!unit) return null
+  const lower = unit.toLowerCase().trim()
+  return UNIT_ALIASES[lower] || lower
+}
+
+export function subtractInventoryFromShoppingList(shoppingList, inventory) {
+  return shoppingList.map(item => {
+    const itemName = (item.name || '').toLowerCase()
+
+    // Find matching inventory item
+    const match = inventory.find(inv => {
+      const invName = (inv.name || '').toLowerCase()
+      return invName === itemName || invName.includes(itemName) || itemName.includes(invName)
+    })
+
+    if (!match) return item
+
+    // If inventory item has no known quantity, flag it but can't subtract
+    if (match.amount == null) {
+      return {
+        ...item,
+        onHand: true,
+        onHandNote: `You may have ${match.displayName || match.name} in your pantry`,
+      }
+    }
+
+    // Check if units are compatible
+    const itemUnit = normalizeUnit(item.unit)
+    const invUnit = normalizeUnit(match.unit)
+
+    if (itemUnit && invUnit && itemUnit !== invUnit) {
+      // Units not compatible — just flag it
+      return {
+        ...item,
+        onHand: true,
+        onHandNote: `You have ${match.amount} ${match.unit} of ${match.displayName || match.name}`,
+      }
+    }
+
+    // Calculate adjusted amount
+    if (item.amount && match.amount) {
+      const needed = item.amount
+      const onHand = match.amount
+      const adjustedAmount = needed - onHand
+
+      if (adjustedAmount <= 0) {
+        return {
+          ...item,
+          coveredByInventory: true,
+          onHand: true,
+          originalAmount: needed,
+          adjustedAmount: 0,
+        }
+      }
+
+      return {
+        ...item,
+        onHand: true,
+        originalAmount: needed,
+        adjustedAmount,
+        onHandAmount: onHand,
+        onHandUnit: match.unit,
+      }
+    }
+
+    return {
+      ...item,
+      onHand: true,
+      onHandNote: `You have some ${match.displayName || match.name} on hand`,
+    }
+  })
 }

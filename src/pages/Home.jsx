@@ -1,10 +1,16 @@
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import { useInventory } from '../context/InventoryContext'
 
 function Home() {
   const { mealPlan, favorites, shoppingList } = useApp()
   const { user } = useAuth()
+  const { inventory, getExpiredItems, getExpiringItems } = useInventory()
+
+  const expiredItems = getExpiredItems()
+  const expiringItems = getExpiringItems(3)
+  const alertCount = expiredItems.length + expiringItems.length
 
   const quickStats = [
     {
@@ -28,6 +34,13 @@ function Home() {
       link: '/shopping-list',
       color: 'bg-secondary-100 text-secondary-600',
     },
+    {
+      label: 'Pantry Items',
+      value: inventory.length,
+      icon: PantryIcon,
+      link: '/inventory',
+      color: 'bg-purple-100 text-purple-600',
+    },
   ]
 
   const firstName = user?.displayName?.split(' ')[0] || 'there'
@@ -43,7 +56,7 @@ function Home() {
         </p>
       </section>
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {quickStats.map(({ label, value, icon: Icon, link, color }) => (
           <Link
             key={label}
@@ -98,6 +111,25 @@ function Home() {
           </Link>
         </div>
       </section>
+
+      {alertCount > 0 && (
+        <Link
+          to="/inventory"
+          className="block card p-4 border-l-4 border-amber-400 bg-amber-50 hover:bg-amber-100 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <AlertTriangleIcon className="w-5 h-5 text-amber-600 shrink-0" />
+            <div>
+              <p className="font-medium text-amber-800">
+                {expiredItems.length > 0 && `${expiredItems.length} expired item${expiredItems.length !== 1 ? 's' : ''}`}
+                {expiredItems.length > 0 && expiringItems.length > 0 && ' and '}
+                {expiringItems.length > 0 && `${expiringItems.length} item${expiringItems.length !== 1 ? 's' : ''} expiring soon`}
+              </p>
+              <p className="text-sm text-amber-600">Tap to view your pantry</p>
+            </div>
+          </div>
+        </Link>
+      )}
 
       {mealPlan && mealPlan.schedule?.length > 0 && (
         <section className="card p-6">
@@ -191,6 +223,22 @@ function SparkleIcon({ className }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+    </svg>
+  )
+}
+
+function PantryIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+    </svg>
+  )
+}
+
+function AlertTriangleIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
     </svg>
   )
 }

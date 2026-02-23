@@ -8,6 +8,7 @@ import Home from './pages/Home'
 import Recipes from './pages/Recipes'
 import MealPlan from './pages/MealPlan'
 import ShoppingList from './pages/ShoppingList'
+import Inventory from './pages/Inventory'
 import Account from './pages/Account'
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/recipes" element={<Recipes />} />
+          <Route path="/inventory" element={<Inventory />} />
           <Route path="/meal-plan" element={<MealPlan />} />
           <Route path="/shopping-list" element={<ShoppingList />} />
           <Route path="/account" element={<Account />} />

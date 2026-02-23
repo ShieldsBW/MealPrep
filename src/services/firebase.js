@@ -142,3 +142,8 @@ export async function saveShoppingList(userId, shoppingList) {
   const docRef = doc(db, 'users', userId)
   await updateDoc(docRef, { shoppingList })
 }
+
+export async function saveInventory(userId, inventory) {
+  const docRef = doc(db, 'users', userId)
+  await updateDoc(docRef, { inventory })
+}

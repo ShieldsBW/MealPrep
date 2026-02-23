@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import { useInventory } from '../context/InventoryContext'
 import MealPlanGenerator from '../components/MealPlan/MealPlanGenerator'
 import MealPlanView from '../components/MealPlan/MealPlanView'
 import RecipeDetail from '../components/Recipe/RecipeDetail'
@@ -12,6 +13,7 @@ import { saveMealPlan, getMealPlans, deleteMealPlan } from '../services/firebase
 function MealPlan() {
   const { mealPlan, updateMealPlan, clearMealPlan, updateShoppingList } = useApp()
   const { user, isAuthenticated } = useAuth()
+  const { inventory } = useInventory()
   const [isGenerating, setIsGenerating] = useState(false)
   const [selectedRecipe, setSelectedRecipe] = useState(null)
   const [showGenerator, setShowGenerator] = useState(!mealPlan)
@@ -30,7 +32,7 @@ function MealPlan() {
     try {
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      const plan = generateMealPlan(MOCK_RECIPES, preferences)
+      const plan = generateMealPlan(MOCK_RECIPES, preferences, inventory)
       updateMealPlan(plan)
       updateShoppingList(plan.shoppingList)
       setShowGenerator(false)

@@ -1,9 +1,14 @@
+import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { usePreferences } from '../context/PreferencesContext'
+import { getVisionApiKey, setVisionApiKey, clearVisionApiKey, isVisionConfigured } from '../services/visionApi'
 
 function Account() {
   const { user, userData } = useAuth()
   const { preferences, DIETARY_OPTIONS } = usePreferences()
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [hasKey, setHasKey] = useState(isVisionConfigured())
+  const [showKey, setShowKey] = useState(false)
 
   const memberSince = userData?.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'
 
@@ -103,6 +108,67 @@ function Account() {
               <span className="text-sm text-gray-500">Freezer-friendly</span>
               <div className="font-medium text-gray-900">{preferences.freezerFriendly ? 'Yes' : 'No'}</div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">AI Features</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              OpenAI API Key
+            </label>
+            {hasKey ? (
+              <div className="flex items-center gap-3">
+                <div className="flex-1 input bg-gray-50 text-gray-500 text-sm">
+                  {showKey ? getVisionApiKey() : 'sk-••••••••••••••••••••'}
+                </div>
+                <button
+                  onClick={() => setShowKey(!showKey)}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  {showKey ? 'Hide' : 'Show'}
+                </button>
+                <button
+                  onClick={() => {
+                    clearVisionApiKey()
+                    setHasKey(false)
+                    setApiKeyInput('')
+                    setShowKey(false)
+                  }}
+                  className="text-sm text-red-600 hover:text-red-700"
+                >
+                  Clear
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  placeholder="sk-..."
+                  className="input flex-1"
+                />
+                <button
+                  onClick={() => {
+                    if (apiKeyInput.trim()) {
+                      setVisionApiKey(apiKeyInput.trim())
+                      setHasKey(true)
+                      setApiKeyInput('')
+                    }
+                  }}
+                  disabled={!apiKeyInput.trim()}
+                  className="btn-primary disabled:opacity-50"
+                >
+                  Save
+                </button>
+              </div>
+            )}
+            <p className="text-xs text-gray-500 mt-2">
+              Your API key is stored locally and never sent to our servers. Used for AI-powered pantry scanning with GPT-4o Vision.
+            </p>
           </div>
         </div>
       </div>
