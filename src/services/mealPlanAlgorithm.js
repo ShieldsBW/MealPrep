@@ -117,6 +117,31 @@ function createMultiSlotSchedule(selectedBySlot, mealsPerWeek, activeSlots) {
     )
   }
 
+  // Eliminate same-day cross-slot duplicates
+  if (activeSlots.length > 1) {
+    for (let i = 0; i < dayCount; i++) {
+      const usedIds = new Set()
+      for (const slot of activeSlots) {
+        const meal = arrangedBySlot[slot][i]
+        if (!meal) continue
+        if (usedIds.has(meal.id)) {
+          // Find an alternative from this slot's pool that isn't used today
+          const pool = selectedBySlot[slot] || []
+          const alt = pool.find(m => m.id !== meal.id && !usedIds.has(m.id))
+          if (alt) {
+            arrangedBySlot[slot][i] = alt
+            usedIds.add(alt.id)
+          } else {
+            // No alternative available, keep it (better than null)
+            usedIds.add(meal.id)
+          }
+        } else {
+          usedIds.add(meal.id)
+        }
+      }
+    }
+  }
+
   const schedule = []
   for (let i = 0; i < dayCount; i++) {
     const day = days[i]

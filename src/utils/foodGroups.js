@@ -145,6 +145,15 @@ const FOOD_GROUP_MAP = {
   'walnuts': 'condiments',
 
   // Spices (also condiments group)
+  'seasoning': 'condiments',
+  'spice': 'condiments',
+  'spice blend': 'condiments',
+  'lemon pepper': 'condiments',
+  'garlic salt': 'condiments',
+  'onion salt': 'condiments',
+  'taco seasoning': 'condiments',
+  'ranch seasoning': 'condiments',
+  'everything bagel seasoning': 'condiments',
   'salt': 'condiments',
   'pepper': 'condiments',
   'black pepper': 'condiments',
@@ -174,16 +183,23 @@ const FOOD_GROUP_MAP = {
 function findMatch(itemName) {
   const lowerName = itemName.toLowerCase()
 
+  // Exact match first
   if (FOOD_GROUP_MAP[lowerName]) {
     return FOOD_GROUP_MAP[lowerName]
   }
 
+  // Find the longest key contained in the item name (prefer most specific match)
+  let bestMatch = null
+  let bestLen = 0
   for (const [key, value] of Object.entries(FOOD_GROUP_MAP)) {
-    if (lowerName.includes(key)) {
-      return value
+    if (lowerName.includes(key) && key.length > bestLen) {
+      bestMatch = value
+      bestLen = key.length
     }
   }
+  if (bestMatch) return bestMatch
 
+  // Then check if a key contains the item name
   for (const [key, value] of Object.entries(FOOD_GROUP_MAP)) {
     if (key.includes(lowerName)) {
       return value

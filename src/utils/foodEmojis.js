@@ -135,7 +135,32 @@ const FOOD_EMOJI_MAP = {
   'almonds': '\u{1F95C}',
   'walnuts': '\u{1F95C}',
 
+  // Beverages & Juices
+  'juice': '\u{1F9C3}',
+  'orange juice': '\u{1F34A}',
+  'apple juice': '\u{1F34E}',
+  'cranberry juice': '\u{1F9C3}',
+  'grape juice': '\u{1F347}',
+  'lemonade': '\u{1F34B}',
+  'water': '\u{1F4A7}',
+  'sparkling water': '\u{1F4A7}',
+  'soda': '\u{1F964}',
+  'coffee': '\u{2615}',
+  'tea': '\u{1F375}',
+  'kombucha': '\u{1F9C3}',
+  'smoothie': '\u{1F964}',
+  'almond milk': '\u{1F95B}',
+  'oat milk': '\u{1F95B}',
+  'soy milk': '\u{1F95B}',
+
   // Spices & Herbs
+  'seasoning': '\u{1F33F}',
+  'spice': '\u{1F33F}',
+  'lemon pepper': '\u{1F33F}',
+  'garlic salt': '\u{1F9C2}',
+  'taco seasoning': '\u{1F33F}',
+  'ranch seasoning': '\u{1F33F}',
+  'everything bagel seasoning': '\u{1F33F}',
   'salt': '\u{1F9C2}',
   'pepper': '\u{1F311}',
   'black pepper': '\u{1F311}',
@@ -163,7 +188,7 @@ const FOOD_EMOJI_MAP = {
 }
 
 const DEFAULT_SECTION_EMOJI = {
-  fridge: '\u{1F9CA}',
+  fridge: '\u{1F37D}\uFE0F',
   pantry: '\u{1F4E6}',
   freezer: '\u{2744}\uFE0F',
   spices: '\u{1F33F}',
@@ -179,12 +204,16 @@ export function getFoodEmoji(itemName, section) {
     return FOOD_EMOJI_MAP[lowerName]
   }
 
-  // Item name contains a key
+  // Find the longest key contained in the item name (prefer most specific match)
+  let bestEmoji = null
+  let bestLen = 0
   for (const [key, emoji] of Object.entries(FOOD_EMOJI_MAP)) {
-    if (lowerName.includes(key)) {
-      return emoji
+    if (lowerName.includes(key) && key.length > bestLen) {
+      bestEmoji = emoji
+      bestLen = key.length
     }
   }
+  if (bestEmoji) return bestEmoji
 
   // Key contains item name
   for (const [key, emoji] of Object.entries(FOOD_EMOJI_MAP)) {
