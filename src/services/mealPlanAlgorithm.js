@@ -56,8 +56,9 @@ export function generateMealPlan(recipes, preferences, inventory = []) {
 
   scoredRecipes.sort((a, b) => b.score - a.score)
 
-  // Select meals independently per slot
+  // Build per-slot recipe pools and select meals independently per slot
   const selectedBySlot = {}
+  const fullPoolBySlot = {}
   for (const slot of activeSlots) {
     const slotRecipes = scoredRecipes.filter(({ recipe }) => {
       if (!recipe.mealTypes || recipe.mealTypes.length === 0) {
@@ -70,6 +71,9 @@ export function generateMealPlan(recipes, preferences, inventory = []) {
     // Fallback: if no recipes match this slot, use all recipes
     const pool = slotRecipes.length > 0 ? slotRecipes : scoredRecipes
 
+    // Keep full pool for dedup alternatives later
+    fullPoolBySlot[slot] = pool.map(({ recipe }) => recipe)
+
     selectedBySlot[slot] = selectMealsWithVariety(
       pool,
       mealsPerWeek,
@@ -78,7 +82,7 @@ export function generateMealPlan(recipes, preferences, inventory = []) {
   }
 
   // Build schedule
-  const schedule = createMultiSlotSchedule(selectedBySlot, mealsPerWeek, activeSlots)
+  const schedule = createMultiSlotSchedule(selectedBySlot, mealsPerWeek, activeSlots, fullPoolBySlot)
 
   // Collect all meals from all slots for shopping list
   const allMeals = []
@@ -104,7 +108,7 @@ export function generateMealPlan(recipes, preferences, inventory = []) {
   }
 }
 
-function createMultiSlotSchedule(selectedBySlot, mealsPerWeek, activeSlots) {
+function createMultiSlotSchedule(selectedBySlot, mealsPerWeek, activeSlots, fullPoolBySlot = {}) {
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
   const dayCount = Math.min(mealsPerWeek, 7)
 
@@ -125,9 +129,11 @@ function createMultiSlotSchedule(selectedBySlot, mealsPerWeek, activeSlots) {
         const meal = arrangedBySlot[slot][i]
         if (!meal) continue
         if (usedIds.has(meal.id)) {
-          // Find an alternative from this slot's pool that isn't used today
-          const pool = selectedBySlot[slot] || []
-          const alt = pool.find(m => m.id !== meal.id && !usedIds.has(m.id))
+          // Try the selected pool first, then fall back to the full slot pool
+          const selected = selectedBySlot[slot] || []
+          const full = fullPoolBySlot[slot] || []
+          const alt = selected.find(m => m.id !== meal.id && !usedIds.has(m.id))
+            || full.find(m => m.id !== meal.id && !usedIds.has(m.id))
           if (alt) {
             arrangedBySlot[slot][i] = alt
             usedIds.add(alt.id)

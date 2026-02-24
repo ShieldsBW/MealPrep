@@ -258,6 +258,78 @@ export async function getSimilarRecipes(recipeId, number = 5) {
   })
 }
 
+const SLOT_TO_API_TYPE = {
+  breakfast: 'breakfast',
+  lunch: 'main course',
+  dinner: 'main course',
+}
+
+const SLOT_TO_QUERY = {
+  breakfast: 'breakfast',
+  lunch: 'lunch',
+  dinner: 'dinner',
+}
+
+export async function searchRecipesForMealPlan(preferences) {
+  const {
+    mealSlots = 1,
+    mealsPerWeek = 5,
+    dietaryRestrictions = [],
+    maxPrepTimeMinutes = 60,
+    cuisinePreferences = [],
+    freezerFriendly = false,
+  } = preferences
+
+  const SLOT_CONFIGS = { 1: ['dinner'], 2: ['lunch', 'dinner'], 3: ['breakfast', 'lunch', 'dinner'] }
+  const activeSlots = SLOT_CONFIGS[mealSlots] || ['dinner']
+
+  const ostomySafe = dietaryRestrictions.includes('ostomy-safe')
+
+  // Fetch recipes for each slot in parallel
+  const slotFetches = activeSlots.map(async (slot) => {
+    try {
+      const result = await searchRecipes({
+        query: SLOT_TO_QUERY[slot],
+        type: SLOT_TO_API_TYPE[slot],
+        diet: dietaryRestrictions.filter(d => DIET_MAP[d]),
+        intolerances: dietaryRestrictions.filter(d => INTOLERANCE_MAP[d]),
+        cuisine: cuisinePreferences.join(','),
+        maxReadyTime: maxPrepTimeMinutes,
+        number: Math.max(mealsPerWeek + 3, 10),
+        ostomySafe,
+      })
+      const recipes = result.results || result || []
+      // Tag each recipe with the slot it was fetched for
+      return recipes.map(r => ({
+        ...r,
+        mealTypes: r.mealTypes || [slot],
+      }))
+    } catch (err) {
+      console.error(`Error fetching ${slot} recipes:`, err)
+      return []
+    }
+  })
+
+  const slotResults = await Promise.all(slotFetches)
+
+  // Combine all recipes, dedup by id (keep first occurrence with its mealTypes)
+  const seen = new Map()
+  for (const recipes of slotResults) {
+    for (const recipe of recipes) {
+      if (seen.has(recipe.id)) {
+        // Merge mealTypes
+        const existing = seen.get(recipe.id)
+        const merged = new Set([...(existing.mealTypes || []), ...(recipe.mealTypes || [])])
+        existing.mealTypes = Array.from(merged)
+      } else {
+        seen.set(recipe.id, recipe)
+      }
+    }
+  }
+
+  return Array.from(seen.values())
+}
+
 function getMockData(endpoint, params) {
   // Set mock quota for demo mode
   apiQuota = {
@@ -270,7 +342,17 @@ function getMockData(endpoint, params) {
   notifyQuotaListeners()
 
   if (endpoint.includes('/recipes/complexSearch') || endpoint.includes('/recipes/random')) {
-    return { results: [...MOCK_RECIPES], totalResults: MOCK_RECIPES.length }
+    let recipes = [...MOCK_RECIPES]
+    // Filter by meal type based on query/type params in demo mode
+    const query = (params.query || '').toLowerCase()
+    if (query === 'breakfast') {
+      recipes = MOCK_RECIPES.filter(r => r.mealTypes?.includes('breakfast'))
+    } else if (query === 'lunch') {
+      recipes = MOCK_RECIPES.filter(r => r.mealTypes?.includes('lunch'))
+    } else if (query === 'dinner') {
+      recipes = MOCK_RECIPES.filter(r => r.mealTypes?.includes('dinner'))
+    }
+    return { results: recipes, totalResults: recipes.length }
   }
 
   if (endpoint.includes('/recipes/') && endpoint.includes('/information')) {

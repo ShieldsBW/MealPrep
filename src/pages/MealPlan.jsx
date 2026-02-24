@@ -7,7 +7,7 @@ import MealPlanView from '../components/MealPlan/MealPlanView'
 import RecipeDetail from '../components/Recipe/RecipeDetail'
 import ApiCreditsDisplay from '../components/Common/ApiCreditsDisplay'
 import { generateMealPlan, generateShoppingList } from '../services/mealPlanAlgorithm'
-import { MOCK_RECIPES, getSimilarRecipes, getRecipeById } from '../services/api'
+import { MOCK_RECIPES, getSimilarRecipes, getRecipeById, searchRecipesForMealPlan } from '../services/api'
 import { saveMealPlan, getMealPlans, deleteMealPlan } from '../services/firebase'
 
 function MealPlan() {
@@ -30,9 +30,13 @@ function MealPlan() {
   const handleGenerate = async (preferences) => {
     setIsGenerating(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Fetch recipes per meal slot type (API or mock fallback)
+      const recipes = await searchRecipesForMealPlan(preferences)
 
-      const plan = generateMealPlan(MOCK_RECIPES, preferences, inventory)
+      // Fall back to mock recipes if search returned nothing
+      const recipePool = recipes.length > 0 ? recipes : MOCK_RECIPES
+
+      const plan = generateMealPlan(recipePool, preferences, inventory)
       updateMealPlan(plan)
       updateShoppingList(plan.shoppingList)
       setShowGenerator(false)
