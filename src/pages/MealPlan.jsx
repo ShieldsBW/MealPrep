@@ -7,7 +7,9 @@ import MealPlanView from '../components/MealPlan/MealPlanView'
 import RecipeDetail from '../components/Recipe/RecipeDetail'
 import ApiCreditsDisplay from '../components/Common/ApiCreditsDisplay'
 import { generateMealPlan, generateShoppingList } from '../services/mealPlanAlgorithm'
-import { MOCK_RECIPES, getSimilarRecipes, getRecipeById, searchRecipesForMealPlan } from '../services/api'
+import { MOCK_RECIPES, getSimilarRecipes, getRecipeById, searchRecipesForMealPlan, searchRecipes, getApiQuota } from '../services/api'
+import { isVisionConfigured } from '../services/visionApi'
+import { generateAlternativeRecipes } from '../services/openaiRecipes'
 import { saveMealPlan, getMealPlans, deleteMealPlan } from '../services/firebase'
 
 function MealPlan() {
@@ -165,36 +167,71 @@ function MealPlan() {
     setReplaceModal({ day, slot, currentMeal })
     setIsLoadingReplacements(true)
 
-    try {
-      // Try to get similar recipes from API
-      const similar = await getSimilarRecipes(currentMeal.id, 6)
+    // Collect all meal IDs currently in the plan to exclude them
+    const excludeIds = (mealPlan.meals || []).map(m => m.id)
+    const prefs = mealPlan.preferences || {}
 
-      if (similar && similar.length > 0) {
-        // Fetch full recipe details for each similar recipe
-        const detailedRecipes = await Promise.all(
-          similar.slice(0, 4).map(async (r) => {
-            try {
-              return await getRecipeById(r.id)
-            } catch {
-              return r
-            }
-          })
-        )
-        setReplacementOptions(detailedRecipes.filter(Boolean))
-      } else {
-        // Fallback to mock recipes
-        const alternatives = MOCK_RECIPES.filter(r =>
-          r.id !== currentMeal.id &&
-          !mealPlan.meals.some(m => m.id === r.id)
-        ).slice(0, 4)
-        setReplacementOptions(alternatives)
+    try {
+      // Strategy 1: OpenAI — generates genuinely different alternatives
+      if (isVisionConfigured()) {
+        const alternatives = await generateAlternativeRecipes(currentMeal, slot, prefs, excludeIds)
+        if (alternatives && alternatives.length > 0) {
+          setReplacementOptions(alternatives)
+          return
+        }
       }
+
+      // Strategy 2: Spoonacular — search for recipes with different cuisine
+      const quota = getApiQuota()
+      if (quota.remaining >= 10 && !quota.isDemo) {
+        const currentCuisines = (currentMeal.cuisines || []).map(c => c.toLowerCase())
+        const allCuisines = ['italian', 'mexican', 'asian', 'mediterranean', 'american', 'indian', 'thai', 'japanese', 'korean', 'french']
+        const differentCuisines = allCuisines.filter(c => !currentCuisines.includes(c))
+        const cuisineQuery = differentCuisines.slice(0, 3).join(',')
+
+        const result = await searchRecipes({
+          query: slot === 'breakfast' ? 'breakfast' : '',
+          type: slot === 'breakfast' ? 'breakfast' : 'main course',
+          cuisine: cuisineQuery,
+          diet: (prefs.dietaryRestrictions || []).filter(d => d !== 'ostomy-safe'),
+          number: 8,
+          ostomySafe: (prefs.dietaryRestrictions || []).includes('ostomy-safe'),
+        })
+
+        const recipes = (result.results || result || [])
+          .filter(r => !excludeIds.includes(r.id))
+          .slice(0, 4)
+
+        if (recipes.length > 0) {
+          setReplacementOptions(recipes)
+          return
+        }
+      }
+
+      // Strategy 3: Mock fallback — filter for different cuisines
+      const currentCuisineSet = new Set((currentMeal.cuisines || []).map(c => c.toLowerCase()))
+      const alternatives = MOCK_RECIPES
+        .filter(r => {
+          if (r.id === currentMeal.id) return false
+          if (excludeIds.includes(r.id)) return false
+          // Prefer recipes for the same slot
+          if (slot && r.mealTypes && !r.mealTypes.includes(slot)) return false
+          return true
+        })
+        .sort((a, b) => {
+          // Prefer different cuisines
+          const aShared = (a.cuisines || []).some(c => currentCuisineSet.has(c.toLowerCase()))
+          const bShared = (b.cuisines || []).some(c => currentCuisineSet.has(c.toLowerCase()))
+          if (aShared !== bShared) return aShared ? 1 : -1
+          return 0
+        })
+        .slice(0, 4)
+      setReplacementOptions(alternatives)
     } catch (error) {
-      console.error('Error fetching similar recipes:', error)
-      // Fallback to mock recipes
+      console.error('Error fetching alternative recipes:', error)
       const alternatives = MOCK_RECIPES.filter(r =>
         r.id !== currentMeal.id &&
-        !mealPlan.meals.some(m => m.id === r.id)
+        !excludeIds.includes(r.id)
       ).slice(0, 4)
       setReplacementOptions(alternatives)
     } finally {
@@ -354,7 +391,7 @@ function MealPlan() {
               {isLoadingReplacements ? (
                 <div className="text-center py-8">
                   <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-2" />
-                  <p className="text-gray-600">Finding similar recipes...</p>
+                  <p className="text-gray-600">Finding alternative recipes...</p>
                 </div>
               ) : replacementOptions.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

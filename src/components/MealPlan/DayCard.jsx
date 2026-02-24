@@ -38,11 +38,18 @@ function DayCard({ day, slotLabel, meal, onViewRecipe, onRemove, onReplace }) {
             {slotLabel}
           </div>
         )}
-        {meal.freezable && (
-          <div className="absolute top-2 right-2 badge-blue text-xs">
-            Freezable
-          </div>
-        )}
+        <div className="absolute top-2 right-2 flex gap-1">
+          {meal.source === 'openai' && (
+            <div className="bg-violet-600 text-white text-xs font-semibold px-1.5 py-0.5 rounded">
+              AI
+            </div>
+          )}
+          {meal.freezable && (
+            <div className="badge-blue text-xs">
+              Freezable
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="p-4">

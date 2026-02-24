@@ -1,3 +1,6 @@
+import { isVisionConfigured } from './visionApi'
+import { generateRecipesWithAI } from './openaiRecipes'
+
 const API_BASE_URL = 'https://api.spoonacular.com'
 const API_KEY = import.meta.env.VITE_SPOONACULAR_API_KEY
 
@@ -285,7 +288,30 @@ export async function searchRecipesForMealPlan(preferences) {
 
   const ostomySafe = dietaryRestrictions.includes('ostomy-safe')
 
-  // Fetch recipes for each slot in parallel
+  // Decision flow: Spoonacular (if quota available) → OpenAI → Mock
+  const useSpoonacular = API_KEY && apiQuota.remaining >= 20
+  const useOpenAI = !useSpoonacular && isVisionConfigured()
+
+  if (useOpenAI) {
+    console.log('Using OpenAI for recipe generation (Spoonacular quota low or unavailable)')
+    const slotFetches = activeSlots.map(async (slot) => {
+      try {
+        return await generateRecipesWithAI(slot, preferences, Math.max(mealsPerWeek + 3, 8))
+      } catch (err) {
+        console.error(`Error generating ${slot} recipes with OpenAI:`, err)
+        return []
+      }
+    })
+
+    const slotResults = await Promise.all(slotFetches)
+    const all = slotResults.flat()
+    if (all.length > 0) return all
+
+    // Fall through to Spoonacular/mock if OpenAI returned nothing
+    console.log('OpenAI returned no recipes, falling back')
+  }
+
+  // Fetch recipes for each slot in parallel (Spoonacular or mock)
   const slotFetches = activeSlots.map(async (slot) => {
     try {
       const result = await searchRecipes({
